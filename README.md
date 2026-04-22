@@ -41,6 +41,7 @@ Some tokens need extra system tools to work. They fail gracefully if the tool is
 4. Messages have a 144-character / 9-line limit (VRChat's chatbox limit)
 
 Cycle - Time until message switch
+
 Update - Time until message update without switch
 
 ### Tokens
