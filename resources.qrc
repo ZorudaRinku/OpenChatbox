@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/">
+    <file>OpenChatbox.png</file>
+  </qresource>
+</RCC>

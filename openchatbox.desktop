@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=OpenChatbox
+Comment=Desktop GUI for sending OSC chat messages
+Exec=openchatbox
+Terminal=false
+Type=Application
+Categories=Utility;Network;
+Icon=openchatbox
+StartupWMClass=openchatbox

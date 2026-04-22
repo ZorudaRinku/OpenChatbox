@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openchatbox"
+version = "0.0.1"
+description = "Desktop GUI for sending customized OSC chat messages to VRChat"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "ZorudaRinku" }]
+requires-python = ">=3.11"
+dependencies = [
+    "PySide6>=6.11",
+    "python-osc>=1.9",
+    "tomli_w>=1.2",
+    "psutil>=7.0",
+    "websockets>=15.0",
+    "bleak>=3.0",
+    "winrt-runtime>=2.0; sys_platform == 'win32'",
+    "winrt-Windows.Foundation>=2.0; sys_platform == 'win32'",
+    "winrt-Windows.Media.Control>=2.0; sys_platform == 'win32'",
+]
+
+[project.urls]
+Homepage = "https://github.com/ZorudaRinku/OpenChatbox"
+Repository = "https://github.com/ZorudaRinku/OpenChatbox"
+Issues = "https://github.com/ZorudaRinku/OpenChatbox/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "pytest-qt>=4.5",
+    "pyinstaller>=6.0",
+]
+
+[project.scripts]
+openchatbox = "main:main"
+
+[tool.setuptools]
+py-modules = ["main", "app", "config", "osc"]
+
+[tool.setuptools.packages.find]
+include = ["ui*", "services*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+qt_api = "pyside6"
