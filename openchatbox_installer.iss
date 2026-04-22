@@ -1,6 +1,9 @@
+#define Version "0.0.0"
+
 [Setup]
 AppName=OpenChatbox
-AppVersion=1.0
+AppVersion={#Version}
+VersionInfoVersion={#Version}
 AppId={{B9F4C6A1-7D2E-4A8B-9C3F-1E5D7A2B4C6F}
 DefaultDirName={autopf}\OpenChatbox
 DefaultGroupName=OpenChatbox

@@ -27,6 +27,7 @@ exe = EXE(
     pyz,
     a.scripts,
     [],
+    exclude_binaries=True,
     name='OpenChatbox',
     debug=False,
     bootloader_ignore_signals=False,

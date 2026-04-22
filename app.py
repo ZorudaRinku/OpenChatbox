@@ -9,7 +9,7 @@ from services.text_processor import TextProcessor, init_fields
 from services.tokens import ALL_TOKENS
 import resources_rc
 
-VERSION = "0.0.1"
+VERSION = "0.0.0+dev"
 
 logger = logging.getLogger(__name__)
 

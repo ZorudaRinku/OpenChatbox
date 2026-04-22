@@ -1,0 +1,107 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Sync version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          sed -i -E 's/^version = .*/version = "'"$VERSION"'"/' pyproject.toml
+          sed -i -E 's/^VERSION = .*/VERSION = "'"$VERSION"'"/' app.py
+
+      - name: Install dependencies
+        run: pip install ".[dev]"
+
+      - name: Generate Qt resources
+        run: pyside6-rcc resources.qrc -o resources_rc.py
+
+      - name: Build executable
+        run: python -m PyInstaller OpenChatbox.spec
+
+      - name: Build installer
+        shell: bash
+        run: |
+          choco install innosetup -y --no-progress
+          iscc ${APP_VERSION:+//DVersion=$APP_VERSION} openchatbox_installer.iss
+
+      - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: OpenChatboxSetup-windows
+          path: dist/OpenChatboxSetup.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Sync version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i -E 's/^version = .*/version = "'"$VERSION"'"/' pyproject.toml
+          sed -i -E 's/^VERSION = .*/VERSION = "'"$VERSION"'"/' app.py
+
+      - name: Install dependencies
+        run: pip install ".[dev]"
+
+      - name: Generate Qt resources
+        run: pyside6-rcc resources.qrc -o resources_rc.py
+
+      - name: Build executable
+        run: python -m PyInstaller OpenChatbox.spec
+
+      - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: OpenChatbox-linux
+          path: dist/OpenChatbox/
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Package Linux build
+        run: |
+          mv OpenChatbox-linux OpenChatbox
+          cp openchatbox.desktop OpenChatbox/openchatbox.desktop
+          convert OpenChatbox.png -resize 512x512 OpenChatbox/openchatbox.png
+          tar -czf OpenChatbox-linux.tar.gz OpenChatbox
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            OpenChatboxSetup-windows/OpenChatboxSetup.exe
+            OpenChatbox-linux.tar.gz
