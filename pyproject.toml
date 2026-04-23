@@ -38,7 +38,7 @@ dev = [
 openchatbox = "main:main"
 
 [tool.setuptools]
-py-modules = ["main", "app", "config", "osc"]
+py-modules = ["main", "app", "config", "resources_rc"]
 
 [tool.setuptools.packages.find]
 include = ["ui*", "services*"]
