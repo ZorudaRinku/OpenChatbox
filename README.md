@@ -6,7 +6,37 @@ Built with Python and PySide6. Works on Linux and Windows.
 
 ![AppPreview](AppPreview.png)
 
-## Building from source (Builds to be available soon)
+## Install
+
+### Windows
+
+Grab `OpenChatboxSetup.exe` from the [latest release](https://github.com/ZorudaRinku/OpenChatbox/releases/latest) and run it.
+
+### Linux (Arch):
+
+```bash
+yay -S openchatbox        # or paru, or your preferred AUR helper
+```
+
+Or manually:
+
+```bash
+git clone https://aur.archlinux.org/openchatbox.git
+cd openchatbox
+makepkg -si
+```
+
+### Linux (General)
+
+Download `OpenChatbox-linux.tar.gz` from the [latest release](https://github.com/ZorudaRinku/OpenChatbox/releases/latest) and extract it anywhere. Also, see optional system dependencies below.
+
+```bash
+tar xzf OpenChatbox-linux.tar.gz
+cd OpenChatbox
+./OpenChatbox
+```
+
+## Building from source (dev)
 
 Requires Python 3.11+.
 
@@ -14,11 +44,6 @@ Requires Python 3.11+.
 git clone https://github.com/ZorudaRinku/OpenChatbox.git
 cd OpenChatbox
 make install
-```
-
-This creates a virtual environment and installs everything. Then run with:
-
-```bash
 make run
 ```
 
@@ -35,7 +60,7 @@ Some tokens need extra system tools to work. They fail gracefully if the tool is
 
 ## Usage
 
-1. The left panel is your chat list - add, remove, and reorder messages
+1. The left panel is your chat list - add, remove, and reorder messages - Double click messages in list to toggle messages
 2. The right panel is the editor for the selected message
 3. Double click tokens to add them to the editor
 4. Messages have a 144-character / 9-line limit (VRChat's chatbox limit)
