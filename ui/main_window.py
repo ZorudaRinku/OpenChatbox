@@ -85,7 +85,7 @@ class UpdateBanner(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 0, 6, 0)
 
-        label = QLabel(f"Version {version} is available")
+        label = QLabel(f"Version {version} is available!")
         layout.addWidget(label)
 
         layout.addStretch()
@@ -157,9 +157,15 @@ class MainWindow(QMainWindow):
         self.main_layout = QVBoxLayout(central)
 
         from app import VERSION
-        if config.get("dismissed_update") != VERSION:
-            self.update_banner = UpdateBanner(VERSION, config)
-            self.main_layout.addWidget(self.update_banner)
+        from services.update_check import UpdateChecker
+
+        self._update_thread = QThread()
+        self._update_checker = UpdateChecker(VERSION)
+        self._update_checker.moveToThread(self._update_thread)
+        self._update_thread.started.connect(self._update_checker.run)
+        self._update_checker.update_available.connect(self._on_update_available)
+        self._update_checker.finished.connect(self._update_thread.quit)
+        self._update_thread.start()
 
         content_layout = QHBoxLayout()
 
@@ -376,8 +382,10 @@ class MainWindow(QMainWindow):
         self.save_chats()
         self._send_thread.quit()
         self._resolve_thread.quit()
+        self._update_thread.quit()
         self._send_thread.wait()
         self._resolve_thread.wait()
+        self._update_thread.wait()
         if self.text_processor:
             for token in self.text_processor.tokens.values():
                 stop = getattr(token, "stop", None)
@@ -746,6 +754,13 @@ class MainWindow(QMainWindow):
     def _on_send_complete(self):
         self._sending = False
         self._schedule_next()
+
+    @Slot(str)
+    def _on_update_available(self, latest_tag: str):
+        latest = latest_tag.lstrip("v")
+        if self.config.get("dismissed_update") == latest:
+            return
+        self.main_layout.insertWidget(0, UpdateBanner(latest, self.config))
 
     def _schedule_next(self):
         now = int(time.monotonic() * 1000)
