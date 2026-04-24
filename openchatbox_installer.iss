@@ -1,4 +1,6 @@
-#define Version "0.0.0"
+#ifndef Version
+  #define Version "0.0.0"
+#endif
 
 [Setup]
 AppName=OpenChatbox
