@@ -87,6 +87,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/download-artifact@v4
 
@@ -100,8 +102,22 @@ jobs:
           convert OpenChatbox.png -resize 512x512 OpenChatbox/openchatbox.png
           tar -czf OpenChatbox-linux.tar.gz OpenChatbox
 
+      - name: Generate commit list
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          {
+            echo "## Commits"
+            echo
+            if [ -n "$PREV_TAG" ]; then
+              git log --no-merges --pretty=format:'- %s (%h)' "$PREV_TAG..${GITHUB_REF_NAME}"
+            else
+              git log --no-merges --pretty=format:'- %s (%h)' "${GITHUB_REF_NAME}"
+            fi
+          } > RELEASE_NOTES.md
+
       - uses: softprops/action-gh-release@v2
         with:
+          body_path: RELEASE_NOTES.md
           files: |
             OpenChatboxSetup-windows/OpenChatboxSetup.exe
             OpenChatbox-linux.tar.gz
