@@ -6,7 +6,7 @@ from config import save_config
 
 logger = logging.getLogger(__name__)
 from ui.char_width import count_visual_lines
-from PySide6.QtCore import Qt, QTimer, QThread, QObject, Signal, Slot
+from PySide6.QtCore import Qt, QTimer, QThread, QObject, QEvent, Signal, Slot
 from PySide6.QtGui import QBrush, QColor, QDesktopServices, QPalette, QTextOption
 from PySide6.QtWidgets import QMainWindow, QWidget, QLabel, QVBoxLayout, QAbstractItemView, QStyledItemDelegate, QTextEdit, QPushButton, QListWidget, QListWidgetItem, QHBoxLayout, QLineEdit, QComboBox, QScrollArea, QToolButton, QSpinBox, QTreeWidget, QTreeWidgetItem
 
@@ -246,6 +246,19 @@ class MainWindow(QMainWindow):
         self.edit_text.textChanged.connect(self.text_edited)
         right_layout.addWidget(self.edit_text)
 
+        self.preview_text = QTextEdit()
+        self.preview_text.setReadOnly(True)
+        self.preview_text.document().setDefaultTextOption(opt)
+        self.preview_text.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.preview_text.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.preview_text.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.preview_text.setWordWrapMode(QTextOption.WrapMode.WrapAnywhere)
+        self.preview_text.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.preview_text.setToolTip("Preview")
+        right_layout.addWidget(self.preview_text)
+
+        self._lock_text_heights()
+
         label_row = QHBoxLayout()
         self.charcount = QLabel("0/144 Characters")
         self.charcount.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
@@ -365,6 +378,20 @@ class MainWindow(QMainWindow):
         if update_val > 0:
             self._next_update_at = now + update_val * 1000
 
+    def _lock_text_heights(self):
+        fm = self.edit_text.fontMetrics()
+        doc_margin = int(self.edit_text.document().documentMargin())
+        frame = self.edit_text.frameWidth()
+        height = fm.lineSpacing() * 9 + doc_margin * 2 + frame * 2
+        self.edit_text.setFixedHeight(height)
+        self.preview_text.setFixedHeight(height)
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() in (QEvent.Type.FontChange, QEvent.Type.StyleChange):
+            if hasattr(self, "preview_text"):
+                self._lock_text_heights()
+
     def _schedule_save(self):
         self._save_timer.start()
 
@@ -460,6 +487,7 @@ class MainWindow(QMainWindow):
         self._resolve_text_requested.emit(text)
 
     def _on_text_resolved(self, resolved):
+        self.preview_text.setPlainText(resolved)
         resolved_len = len(resolved)
         visual_lines = count_visual_lines(resolved)
         self.charcount.setText(f"{resolved_len}/144 Characters")
