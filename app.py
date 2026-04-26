@@ -7,6 +7,7 @@ from services.osc import OSCClient
 from config import load_config
 from services.text_processor import TextProcessor, init_fields
 from services.tokens import ALL_TOKENS
+from services.platform_info import SYSTEM, IS_WINE
 import resources_rc
 
 VERSION = "0.0.0+dev"
@@ -24,6 +25,7 @@ def create_app():
     app.setApplicationName("OpenChatbox")
     app.setDesktopFileName("openchatbox")
     app.setWindowIcon(QIcon(":/OpenChatbox.png"))
+    logger.info("OpenChatbox %s on %s%s", VERSION, SYSTEM, " (wine)" if IS_WINE else "")
     config = load_config()
     logger.info("OSC target %s:%s", config["osc"]["ip"], config["osc"]["port"])
     osc_client = OSCClient(config["osc"]["ip"], config["osc"]["port"])
