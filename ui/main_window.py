@@ -20,6 +20,11 @@ TOKEN_GROUPS = [
     ("Media", ["nowplaying", "artist", "song", "song_progress",
                "song_progress_bar", "volume"]),
     ("Streaming", ["twitch_followers", "twitch_viewers", "heartrate", "heartrate_emote"]),
+    ("VRChat", ["vrc_status", "vrc_status_message", "vrc_pronouns",
+                "vrc_friends_online", "vrc_friends_in_instance",
+                "vrc_friends_total", "vrc_world", "vrc_time_in_world",
+                "vrc_instance_users", "vrc_instance_group", "vrc_region",
+                "vrc_session_length", "vrc_worlds_hopped", "vrc_notifications"]),
     ("Misc", ["random", "blankline", "egg"]),
 ]
 
@@ -424,8 +429,9 @@ class MainWindow(QMainWindow):
                         stop(blocking=False)
                     except TypeError:
                         stop()
-        from services import heartrate_service
+        from services import heartrate_service, vrchat_service
         heartrate_service.shutdown()
+        vrchat_service.shutdown()
         super().closeEvent(event)
 
     def click_add(self):
@@ -715,6 +721,51 @@ class MainWindow(QMainWindow):
                 poll_timer.timeout.connect(poll_token)
                 poll_timer.start()
                 self._field_widgets.append(poll_timer)
+            elif field_def.field_type == "vrchat_account":
+                from services import vrchat_service
+                svc = vrchat_service.get_service()
+
+                def account_btn_text(_svc=svc):
+                    return "Sign Out" if _svc.is_authenticated() else "Sign In"
+
+                container = QWidget()
+                box = QVBoxLayout(container)
+                box.setContentsMargins(0, 0, 0, 0)
+                box.setSpacing(4)
+
+                status_label = QLabel(svc.status)
+                status_label.setStyleSheet("color: gray; font-style: italic")
+                status_label.setWordWrap(True)
+                box.addWidget(status_label)
+
+                btn = QPushButton(account_btn_text())
+
+                def on_account_click(_checked=False, _btn=btn, _svc=svc):
+                    if _svc.is_authenticated():
+                        _svc.logout()
+                        vrchat_service.persist_cookies(_svc, self.config)
+                    else:
+                        from ui.vrchat_dialog import VRChatLoginDialog
+                        dlg = VRChatLoginDialog(self, _svc, self.config)
+                        dlg.exec()
+                    _btn.setText(account_btn_text())
+                btn.clicked.connect(on_account_click)
+                box.addWidget(btn)
+
+                self.fields_layout.insertWidget(insert_pos, container)
+                self._field_widgets.append(container)
+
+                poll_timer = QTimer()
+                poll_timer.setInterval(500)
+
+                def refresh_account(_lbl=status_label, _btn=btn, _svc=svc):
+                    _lbl.setText(_svc.status)
+                    target = account_btn_text()
+                    if _btn.text() != target:
+                        _btn.setText(target)
+                poll_timer.timeout.connect(refresh_account)
+                poll_timer.start()
+                self._field_widgets.append(poll_timer)
             else:
                 widget = self._make_field_widget(tag, field_def, token)
                 self.fields_layout.insertWidget(insert_pos, widget)
@@ -762,12 +813,13 @@ class MainWindow(QMainWindow):
         if hasattr(token, "reconnect"):
             token.reconnect()
 
-        if "tokens" not in self.config:
-            self.config["tokens"] = {}
-        if tag not in self.config["tokens"]:
-            self.config["tokens"][tag] = {}
-        self.config["tokens"][tag][key] = value
-        self._schedule_save()
+        if not key.startswith("_"):
+            if "tokens" not in self.config:
+                self.config["tokens"] = {}
+            if tag not in self.config["tokens"]:
+                self.config["tokens"][tag] = {}
+            self.config["tokens"][tag][key] = value
+            self._schedule_save()
 
         self.validate_text(self.edit_text.toPlainText())
 
