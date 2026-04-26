@@ -344,6 +344,7 @@ class MainWindow(QMainWindow):
         self.resize(1000, 700)
 
         self.current_index = 0
+        self._loading_item = False
         self._next_cycle_at = 0
         self._next_update_at = 0
         self._next_action = None
@@ -459,10 +460,14 @@ class MainWindow(QMainWindow):
 
     def item_click(self):
         if self.list.currentItem():
-            if self.list.currentItem().text() == "<Blank>":
-                self.edit_text.setText("")
-            else:
-                self.edit_text.setText(self.list.currentItem().text())
+            self._loading_item = True
+            try:
+                if self.list.currentItem().text() == "<Blank>":
+                    self.edit_text.setText("")
+                else:
+                    self.edit_text.setText(self.list.currentItem().text())
+            finally:
+                self._loading_item = False
             self.edit_text.setFocus()
 
     def text_edited(self):
@@ -473,7 +478,8 @@ class MainWindow(QMainWindow):
             else:
                 self.list.currentItem().setText(text)
         self.validate_text(text)
-        self._schedule_save()
+        if not self._loading_item:
+            self._schedule_save()
 
     def toggle_item_enabled(self, item):
         enabled = item.data(Qt.ItemDataRole.UserRole)
