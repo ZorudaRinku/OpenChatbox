@@ -173,6 +173,22 @@ class TestMainWindow:
         window.send_current()
         mock_osc_client.send_message.assert_not_called()
 
+    def test_startup_with_first_chat_disabled_starts_cycle(
+        self, qtbot, mock_osc_client, text_processor
+    ):
+        config = {
+            "osc": {"ip": "127.0.0.1", "port": 9000},
+            "chats": ["Hello world", "<time>"],
+            "disabled_chats": [True, False],
+            "tokens": {},
+        }
+        win = MainWindow(mock_osc_client, config, text_processor=text_processor)
+        qtbot.addWidget(win)
+        try:
+            assert win._timer.isActive()
+        finally:
+            win.close()
+
     def test_char_count_label_updates(self, window, qtbot):
         window.list.setCurrentRow(0)
         window.edit_text.setText("abc")

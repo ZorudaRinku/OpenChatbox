@@ -370,7 +370,7 @@ class MainWindow(QMainWindow):
         if self.list.count() > 0:
             QTimer.singleShot(0, lambda: self.list.setCurrentRow(0))
 
-        self.send_current()
+        sent = self.send_current()
         now = int(time.monotonic() * 1000)
         cycle_val = self.cycle_spin.value()
         update_val = self.update_spin.value()
@@ -378,6 +378,8 @@ class MainWindow(QMainWindow):
             self._next_cycle_at = now + cycle_val * 1000
         if update_val > 0:
             self._next_update_at = now + update_val * 1000
+        if not sent:
+            self._schedule_next()
 
     def _lock_text_heights(self):
         fm = self.edit_text.fontMetrics()
@@ -771,19 +773,20 @@ class MainWindow(QMainWindow):
 
     def send_current(self):
         if self.list.count() == 0:
-            return
+            return False
         if self.current_index >= self.list.count():
             self.current_index = 0
         item = self.list.item(self.current_index)
         if not item.data(Qt.ItemDataRole.UserRole):
-            return
+            return False
         text = item.text()
         if text == "<Blank>":
             logger.debug("Skipped blank chat at index %d", self.current_index)
-            return
+            return False
         self._sending = True
         self._last_send_ms = int(time.monotonic() * 1000)
         self._send_requested.emit(text)
+        return True
 
     def _on_send_complete(self):
         self._sending = False
@@ -828,14 +831,18 @@ class MainWindow(QMainWindow):
             for _ in range(count):
                 self.current_index = (self.current_index + 1) % count
                 if self.list.item(self.current_index).data(Qt.ItemDataRole.UserRole):
-                    self.send_current()
+                    sent = self.send_current()
                     self._next_cycle_at = now + self.cycle_spin.value() * 1000
                     if self.update_spin.value() > 0:
                         self._next_update_at = now + self.update_spin.value() * 1000
+                    if not sent:
+                        self._schedule_next()
                     return
         else:
-            self.send_current()
+            sent = self.send_current()
             self._next_update_at = now + self.update_spin.value() * 1000
+            if not sent:
+                self._schedule_next()
 
     def cycle_next(self):
         now = int(time.monotonic() * 1000)
