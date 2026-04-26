@@ -31,8 +31,7 @@ build() {
 
     /usr/lib/qt6/rcc -g python resources.qrc -o resources_rc.py
 
-    # Install app source into a staging lib dir. --no-deps keeps pip from
-    # pulling in PySide6/psutil/websockets — those come from system packages.
+    # Install app source into a staging lib dir.
     PYTHONDONTWRITEBYTECODE=1 python -m pip install \
         --target="$srcdir/lib" \
         --no-compile \
@@ -53,9 +52,9 @@ package() {
 
     install -dm755 "$pkgdir/usr/lib/$pkgname"
     cp -a "$srcdir/lib/." "$pkgdir/usr/lib/$pkgname/"
-    # pip install --target leaves a `bin/` sidecar we don't use (our launcher is /usr/bin/openchatbox)
+    # pip install --target leaves a `bin/` sidecar we don't use
     rm -rf "$pkgdir/usr/lib/$pkgname/bin"
-    # direct_url.json records the build-time srcdir path — strip it to avoid leaking /tmp paths
+    # direct_url.json records the build-time srcdir path but unused
     rm -f "$pkgdir/usr/lib/$pkgname/$pkgname-$pkgver.dist-info/direct_url.json"
 
     install -dm755 "$pkgdir/usr/bin"
