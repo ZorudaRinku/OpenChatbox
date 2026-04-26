@@ -111,6 +111,22 @@ Double click or Wrap in angle brackets in your messages and they get replaced wi
 | `<countdown:HH:MM>` | Countdown to a target time |
 | `<random:min:max>` | Random number in range |
 | `<blankline>` | Empty line |
+| `<vrc_status>` | VRChat status text (active / join me / ask me / busy) |
+| `<vrc_status_message>` | Custom VRChat status description |
+| `<vrc_pronouns>` | Pronouns set on your VRChat profile |
+| `<vrc_friends_online>` | Count of friends currently online |
+| `<vrc_friends_total>` | Total friend count |
+| `<vrc_friends_in_instance>` | Friends present in your current instance |
+| `<vrc_world>` | Current world name |
+| `<vrc_time_in_world>` | Time spent in the current world |
+| `<vrc_instance_users>` | Current/max users (e.g. 4/16, plus queue when full) |
+| `<vrc_instance_group>` | Group name (or short code) for group instances |
+| `<vrc_region>` | Instance region (US / EU / JP / ...) |
+| `<vrc_session_length>` | Time since last VRChat login |
+| `<vrc_worlds_hopped>` | Distinct worlds visited this session |
+| `<vrc_notifications>` | Unread VRChat notifications |
+
+> VRChat tokens require sign-in and use VRChat's unofficial API. Use at your own risk!
 
 ## Configuration
 

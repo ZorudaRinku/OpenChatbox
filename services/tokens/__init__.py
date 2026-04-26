@@ -34,6 +34,20 @@ from .song_progress_token import SongProgressToken
 from .song_progress_bar_token import SongProgressBarToken
 from .twitch_followers_token import TwitchFollowersToken
 from .twitch_viewers_token import TwitchViewersToken
+from .vrc_status_token import VrcStatusToken
+from .vrc_status_message_token import VrcStatusMessageToken
+from .vrc_pronouns_token import VrcPronounsToken
+from .vrc_friends_online_token import VrcFriendsOnlineToken
+from .vrc_friends_total_token import VrcFriendsTotalToken
+from .vrc_friends_in_instance_token import VrcFriendsInInstanceToken
+from .vrc_time_in_world_token import VrcTimeInWorldToken
+from .vrc_world_token import VrcWorldToken
+from .vrc_instance_users_token import VrcInstanceUsersToken
+from .vrc_instance_group_token import VrcInstanceGroupToken
+from .vrc_region_token import VrcRegionToken
+from .vrc_session_length_token import VrcSessionLengthToken
+from .vrc_worlds_hopped_token import VrcWorldsHoppedToken
+from .vrc_notifications_token import VrcNotificationsToken
 from .blankline_token import BlanklineToken
 
 
@@ -45,4 +59,10 @@ ALL_TOKENS = [ArtistToken, BatteryToken, BlanklineToken, CountdownToken,
               RandomToken, RamGbToken, RamToken, SongProgressBarToken, SongProgressToken,
               SessionToken, SongToken, TimeToken, TimezoneToken, UptimeToken,
               TwitchFollowersToken, TwitchViewersToken,
-              UtcToken, VolumeToken, WeatherToken, WindowToken, WmToken]
+              UtcToken,
+              VrcStatusToken, VrcStatusMessageToken, VrcPronounsToken,
+              VrcFriendsOnlineToken, VrcFriendsTotalToken,
+              VrcFriendsInInstanceToken, VrcWorldToken, VrcTimeInWorldToken,
+              VrcInstanceUsersToken, VrcInstanceGroupToken, VrcRegionToken,
+              VrcSessionLengthToken, VrcWorldsHoppedToken, VrcNotificationsToken,
+              VolumeToken, WeatherToken, WindowToken, WmToken]
