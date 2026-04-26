@@ -13,10 +13,10 @@ def _detect_wine() -> bool:
     if platform.system() != "Windows":
         return False
     try:
-        import winreg
-        winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Wine").Close()
+        import ctypes
+        ctypes.windll.ntdll.wine_get_version
         return True
-    except OSError:
+    except (AttributeError, OSError):
         return False
 
 IS_WINE: bool = _detect_wine()
