@@ -131,12 +131,16 @@ class BLEService:
         self._task: concurrent.futures.Future | None = None
         self._scan_task: concurrent.futures.Future | None = None
         self.scan_results: list[tuple[str, str, int, bool]] | None = None
+        self.scan_status: str = ""
         self.scanning: bool = False
         self.gave_up: bool = False
         self._ref_count: int = 0
 
+    def is_running(self) -> bool:
+        return self._task is not None and not self._task.done()
+
     def start(self):
-        if self._task is not None and not self._task.done():
+        if self.is_running():
             return
         self._stop_event.clear()
         loop = _ensure_loop()
@@ -180,16 +184,20 @@ class BLEService:
             return
         if self._scan_task is not None and not self._scan_task.done():
             return
+        # Flip state synchronously: a busy BLE loop can defer _do_scan past the 200ms UI poll.
+        self.scanning = True
+        self.scan_status = "Scanning..."
+        self.scan_results = None
         loop = _ensure_loop()
         self._scan_task = asyncio.run_coroutine_threadsafe(self._do_scan(), loop)
 
     async def _do_scan(self):
         if BleakScanner is None:
             self.scan_results = []
+            self.scan_status = "bleak not installed"
+            self.scanning = False
             return
 
-        self.scanning = True
-        self.scan_results = None
         try:
             devices = await BleakScanner.discover(timeout=8, return_adv=True)
             results = []
@@ -200,9 +208,18 @@ class BLEService:
                 results.append((device.address, name, rssi, has_hr))
             results.sort(key=lambda x: (not x[3], -x[2]))
             self.scan_results = results
+            if not results:
+                self.scan_status = "No devices found"
+            else:
+                hr_count = sum(1 for r in results if r[3])
+                if hr_count:
+                    self.scan_status = f"Found {len(results)} device(s), {hr_count} HR"
+                else:
+                    self.scan_status = f"Found {len(results)} device(s)"
         except Exception as exc:
             logger.warning("BLE scan failed: %s", exc)
             self.scan_results = []
+            self.scan_status = f"Scan failed: {exc}"
         finally:
             self.scanning = False
 
@@ -261,13 +278,14 @@ class BLEService:
 
                     service_uuids = [str(s.uuid) for s in client.services]
                     if HR_SERVICE_UUID not in service_uuids:
+                        # Reconnecting won't add an HR service; give up so the message stays visible. reconnect() retries on field re-edit.
                         self._status = ("No HR service on device. "
                                         "Try a broadcaster app (e.g. Heart Rate for Bluetooth)")
+                        self.gave_up = True
                         logger.warning("Device %s connected but does not expose Heart Rate Service. "
-                                       "Available services: %s", address, service_uuids)
-                        await asyncio.sleep(min(backoff, 30))
-                        backoff = min(backoff * 2, 30)
-                        continue
+                                       "Available services: %s - giving up",
+                                       address, service_uuids)
+                        return
 
                     self._status = "Waiting for data..."
 
