@@ -246,6 +246,25 @@ class MainWindow(QMainWindow):
         self.edit_text.textChanged.connect(self.text_edited)
         right_layout.addWidget(self.edit_text)
 
+        self.char_picker_btn = QToolButton(self.edit_text)
+        self.char_picker_btn.setText("Ω")
+        self.char_picker_btn.setToolTip("Open character picker")
+        self.char_picker_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.char_picker_btn.setAutoRaise(True)
+        self.char_picker_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.char_picker_btn.setFixedSize(22, 22)
+        self.char_picker_btn.setStyleSheet(
+            "QToolButton { background: rgba(0,0,0,0); border: 1px solid rgba(128,128,128,90);"
+            " border-radius: 4px; color: palette(text); font-size: 13px; padding: 0; }"
+            "QToolButton:hover { background: rgba(128,128,128,60); }"
+            "QToolButton:pressed { background: rgba(128,128,128,110); }"
+        )
+        self.char_picker_btn.clicked.connect(self._open_char_picker)
+        self.char_picker_btn.raise_()
+        self._char_picker_dialog = None
+        self.edit_text.installEventFilter(self)
+        self._position_char_picker_btn()
+
         self.preview_text = QTextEdit()
         self.preview_text.setReadOnly(True)
         self.preview_text.document().setDefaultTextOption(opt)
@@ -394,6 +413,32 @@ class MainWindow(QMainWindow):
         if event.type() in (QEvent.Type.FontChange, QEvent.Type.StyleChange):
             if hasattr(self, "preview_text"):
                 self._lock_text_heights()
+
+    def eventFilter(self, obj, event):
+        if obj is self.edit_text and event.type() == QEvent.Type.Resize:
+            self._position_char_picker_btn()
+        return super().eventFilter(obj, event)
+
+    def _position_char_picker_btn(self):
+        btn = self.char_picker_btn
+        margin = 4
+        x = self.edit_text.width() - btn.width() - margin
+        btn.move(max(0, x), margin)
+        btn.raise_()
+
+    def _open_char_picker(self):
+        if self._char_picker_dialog is None:
+            from ui.char_picker import CharPickerDialog
+            self._char_picker_dialog = CharPickerDialog(self)
+            self._char_picker_dialog.char_chosen.connect(self._insert_char)
+        dlg = self._char_picker_dialog
+        dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
+
+    def _insert_char(self, ch):
+        self.edit_text.insertPlainText(ch)
+        self.edit_text.setFocus()
 
     def _schedule_save(self):
         self._save_timer.start()
