@@ -703,13 +703,15 @@ class MainWindow(QMainWindow):
                     combo.addItem(current)
                     combo.setCurrentText(current)
 
-                def on_ble_selected(index, c=combo, t=tag, k=field_def.key):
-                    data = c.itemData(index)
-                    self._on_field_edited(t, k, data if data else c.itemText(index))
-                combo.currentIndexChanged.connect(on_ble_selected)
-                combo.editTextChanged.connect(
-                    lambda text, t=tag, k=field_def.key: self._on_field_edited(t, k, text)
-                )
+                def on_combo_text_changed(text, c=combo, t=tag, k=field_def.key):
+                    idx = c.findText(text)
+                    if idx >= 0:
+                        data = c.itemData(idx)
+                        if data:
+                            self._on_field_edited(t, k, data)
+                            return
+                    self._on_field_edited(t, k, text)
+                combo.editTextChanged.connect(on_combo_text_changed)
                 row_layout.addWidget(combo, stretch=1)
 
                 scan_btn = QToolButton()
