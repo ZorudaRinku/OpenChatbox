@@ -30,6 +30,9 @@ class HeartrateToken:
         return self._scanner.scan_results
 
     def scan(self):
+        # Free the BLE adapter; BlueZ discovery returns nothing while a connection contends for it. _start_service reconnects on next resolve.
+        if self._service and self._service.is_running():
+            self._service.stop(blocking=False)
         self._scanner.scan()
 
     def reconnect(self):
@@ -44,6 +47,8 @@ class HeartrateToken:
         if self._service and self._active_key == addr:
             if self._service.gave_up:
                 return
+            if not self._service.is_running():
+                self._service.start()
             return
         if self._service and self._active_key:
             heartrate_service.release(self._active_key)
@@ -60,9 +65,11 @@ class HeartrateToken:
 
     @property
     def status(self) -> str:
-        if self._service:
+        if self.scanning:
+            return self._scanner.scan_status or "Scanning..."
+        if self._service and self._service.status:
             return self._service.status
-        return ""
+        return self._scanner.scan_status
 
     def resolve(self) -> str:
         self._start_service()
