@@ -771,37 +771,58 @@ class MainWindow(QMainWindow):
     def _populate_ble_combo(self, combo, results):
         saved = combo.currentText()
         saved_data = combo.currentData()
-        combo.clear()
 
-        hr_devices = [r for r in results if r[3]]
-        other_devices = [r for r in results if not r[3] and r[1]]
+        first_hr_idx = -1
+        first_other_idx = -1
 
-        if hr_devices:
-            combo.addItem("-- Heart Rate --")
-            idx = combo.count() - 1
-            combo.model().item(idx).setEnabled(False)
-            for address, name, rssi, _ in hr_devices:
-                label = f"♥ {name or address} ({rssi} dBm)" if name else f"♥ {address} ({rssi} dBm)"
-                combo.addItem(label, userData=address)
+        combo.blockSignals(True)
+        try:
+            combo.clear()
 
-        if other_devices:
-            combo.addItem("-- Other --")
-            idx = combo.count() - 1
-            combo.model().item(idx).setEnabled(False)
-            for address, name, rssi, _ in other_devices:
-                display = f"{name} ({rssi} dBm)" if name else f"{address} ({rssi} dBm)"
-                combo.addItem(display, userData=address)
+            hr_devices = [r for r in results if r[3]]
+            other_devices = [r for r in results if not r[3] and r[1]]
 
-        if not hr_devices and not other_devices:
-            combo.addItem("No devices found")
+            if hr_devices:
+                combo.addItem("-- Heart Rate --")
+                idx = combo.count() - 1
+                combo.model().item(idx).setEnabled(False)
+                for address, name, rssi, _ in hr_devices:
+                    label = f"♥ {name or address} ({rssi} dBm)" if name else f"♥ {address} ({rssi} dBm)"
+                    combo.addItem(label, userData=address)
+                    if first_hr_idx < 0:
+                        first_hr_idx = combo.count() - 1
+
+            if other_devices:
+                combo.addItem("-- Other --")
+                idx = combo.count() - 1
+                combo.model().item(idx).setEnabled(False)
+                for address, name, rssi, _ in other_devices:
+                    display = f"{name} ({rssi} dBm)" if name else f"{address} ({rssi} dBm)"
+                    combo.addItem(display, userData=address)
+                    if first_other_idx < 0:
+                        first_other_idx = combo.count() - 1
+
+            if not hr_devices and not other_devices:
+                combo.addItem("No devices found")
+        finally:
+            combo.blockSignals(False)
 
         restore = saved_data or saved
+        target_idx = -1
         if restore:
-            idx = combo.findData(restore)
-            if idx >= 0:
-                combo.setCurrentIndex(idx)
-            else:
-                combo.setEditText(saved)
+            target_idx = combo.findData(restore)
+
+        # No saved value: pick the first real device so the disabled section header isn't selected.
+        if target_idx < 0 and not saved:
+            if first_hr_idx >= 0:
+                target_idx = first_hr_idx
+            elif first_other_idx >= 0:
+                target_idx = first_other_idx
+
+        if target_idx >= 0:
+            combo.setCurrentIndex(target_idx)
+        elif saved:
+            combo.setEditText(saved)
 
     def _on_field_edited(self, tag, key, value):
         token = self.text_processor.tokens[tag]
