@@ -477,7 +477,9 @@ class MainWindow(QMainWindow):
         item = QListWidgetItem("")
         item.setData(Qt.ItemDataRole.UserRole, True)
         self.list.addItem(item)
+        self.list.clearSelection()
         self.list.setCurrentItem(item)
+        item.setSelected(True)
         self.edit_text.setFocus()
         self._schedule_save()
 
@@ -489,16 +491,30 @@ class MainWindow(QMainWindow):
         item.setData(Qt.ItemDataRole.UserRole, current.data(Qt.ItemDataRole.UserRole))
         self.list.insertItem(self.list.currentRow() + 1, item)
         self.validate_item(item)
+        self.list.clearSelection()
         self.list.setCurrentItem(item)
+        item.setSelected(True)
         self._schedule_save()
 
     def click_remove(self):
+        selected_rows = sorted({self.list.row(item) for item in self.list.selectedItems()})
+        if not selected_rows:
+            return
+        target_row = selected_rows[0]
         self.list.blockSignals(True)
         self.edit_text.blockSignals(True)
-        for item in self.list.selectedItems():
-            self.list.takeItem(self.list.row(item))
-        self.edit_text.blockSignals(False)
-        self.list.blockSignals(False)
+        try:
+            for row in reversed(selected_rows):
+                self.list.takeItem(row)
+            new_count = self.list.count()
+            if new_count > 0:
+                target_row = min(target_row, new_count - 1)
+                self.list.clearSelection()
+                self.list.setCurrentRow(target_row)
+                self.list.item(target_row).setSelected(True)
+        finally:
+            self.list.blockSignals(False)
+            self.edit_text.blockSignals(False)
         if self.list.currentItem():
             self.edit_text.setText(self.list.currentItem().text())
         else:
