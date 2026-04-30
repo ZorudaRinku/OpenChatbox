@@ -122,3 +122,46 @@ jobs:
           files: |
             OpenChatboxSetup-windows/OpenChatboxSetup.exe
             OpenChatbox-linux.tar.gz
+
+  publish-aur:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bump PKGBUILD to released version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TARBALL_URL="https://github.com/${GITHUB_REPOSITORY}/archive/v${VERSION}.tar.gz"
+
+          # GitHub generates tag tarballs lazily; retry until reachable.
+          for i in $(seq 1 12); do
+            if curl -sfLI "$TARBALL_URL" >/dev/null; then break; fi
+            echo "Tag tarball not ready yet, retrying ($i/12)..."
+            sleep 5
+          done
+
+          SHA256=$(curl -sfL "$TARBALL_URL" | sha256sum | awk '{print $1}')
+          if [ -z "$SHA256" ]; then
+            echo "Failed to compute sha256 from $TARBALL_URL"
+            exit 1
+          fi
+
+          PKGBUILD=packaging/aur/openchatbox/PKGBUILD
+          sed -i -E "s/^pkgver=.*/pkgver=${VERSION}/" "$PKGBUILD"
+          sed -i -E "s/^pkgrel=.*/pkgrel=1/" "$PKGBUILD"
+          sed -i -E "s/^sha256sums=\(.*\)/sha256sums=('${SHA256}')/" "$PKGBUILD"
+
+          echo "--- Updated PKGBUILD ---"
+          cat "$PKGBUILD"
+
+      - uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
+        with:
+          pkgname: openchatbox
+          pkgbuild: packaging/aur/openchatbox/PKGBUILD
+          commit_username: ZorudaRinku
+          commit_email: zorudarinku@gmail.com
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ github.ref_name }}"
+          ssh_keyscan_types: "rsa,ed25519"
