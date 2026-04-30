@@ -76,10 +76,11 @@ def _ensure_loop() -> asyncio.AbstractEventLoop:
         _ble_thread = threading.Thread(target=_run, daemon=True, name="BLE-loop")
         _ble_thread.start()
 
-    if not _ble_loop_ready.wait(timeout=5):
-        raise RuntimeError("BLE loop thread failed to start within 5s")
-    assert _ble_loop is not None
-    return _ble_loop
+        # Wait under the lock so a second caller can't spawn another loop thread.
+        if not _ble_loop_ready.wait(timeout=5):
+            raise RuntimeError("BLE loop thread failed to start within 5s")
+        assert _ble_loop is not None
+        return _ble_loop
 
 
 def shutdown():
@@ -135,16 +136,19 @@ class BLEService:
         self.scanning: bool = False
         self.gave_up: bool = False
         self._ref_count: int = 0
+        # Serialize start(): concurrent callers were scheduling duplicate loops, hitting bluez InProgress.
+        self._start_lock = threading.Lock()
 
     def is_running(self) -> bool:
         return self._task is not None and not self._task.done()
 
     def start(self):
-        if self.is_running():
-            return
-        self._stop_event.clear()
-        loop = _ensure_loop()
-        self._task = asyncio.run_coroutine_threadsafe(self._ble_loop(), loop)
+        with self._start_lock:
+            if self.is_running():
+                return
+            self._stop_event.clear()
+            loop = _ensure_loop()
+            self._task = asyncio.run_coroutine_threadsafe(self._ble_loop(), loop)
 
     def stop(self, blocking: bool = True):
         self._stop_event.set()
@@ -306,17 +310,30 @@ class BLEService:
             except Exception as exc:
                 if self._stop_event.is_set():
                     break
-                retries += 1
-                if retries >= MAX_CONNECT_RETRIES:
-                    self._status = f"Connection failed - gave up ({exc})"
-                    self.gave_up = True
-                    logger.warning("BLE connection to '%s' failed after %d attempts - giving up: %s",
-                                   self._device_address, retries, exc)
-                    return
+
+                # Adapter contention (another process or a stale prior run) clears in seconds; don't burn give-up budget on it.
+                exc_lower = str(exc).lower()
+                transient = ("inprogress" in exc_lower
+                             or "in progress" in exc_lower
+                             or "resource temporarily unavailable" in exc_lower)
+
+                if not transient:
+                    retries += 1
+                    if retries >= MAX_CONNECT_RETRIES:
+                        self._status = f"Connection failed - gave up ({exc})"
+                        self.gave_up = True
+                        logger.warning("BLE connection to '%s' failed after %d attempts - giving up: %s",
+                                       self._device_address, retries, exc)
+                        return
+
+                delay = min(backoff, 30)
                 self._status = f"Error: {exc}"
-                logger.warning("BLE connection error: %s - retrying in %ds (%d/%d)",
-                               exc, backoff, retries, MAX_CONNECT_RETRIES)
-                await asyncio.sleep(min(backoff, 30))
+                if transient:
+                    logger.info("BLE adapter busy: %s - retrying in %ds", exc, delay)
+                else:
+                    logger.warning("BLE connection error: %s - retrying in %ds (%d/%d)",
+                                   exc, delay, retries, MAX_CONNECT_RETRIES)
+                await asyncio.sleep(delay)
                 backoff = min(backoff * 2, 30)
 
 
