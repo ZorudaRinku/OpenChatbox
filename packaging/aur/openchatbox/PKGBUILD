@@ -14,6 +14,14 @@ depends=(
     'python-websockets'
     'hicolor-icon-theme'
 )
+optdepends=(
+    'playerctl: <song>, <artist>, <nowplaying>, <song_progress> tokens'
+    'xdotool: <window> token on X11'
+    'kdotool: <window> token on KDE Wayland'
+    'wmctrl: <wm> token'
+    'wireless_tools: <network> token fallback (when NetworkManager is not in use)'
+    'libpulse: <volume> token (provides pactl; works against PulseAudio or PipeWire)'
+)
 makedepends=(
     'python-pip'
     'qt6-base'
