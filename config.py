@@ -38,6 +38,10 @@ DEFAULTS = {
     },
     "chats": ["╔════ஓ๑♡๑ஓ════╗\n<nowplaying>\n<song_progress>\n<song_progress_bar>\n╚════ஓ๑♡๑ஓ════╝", "┍━━━━━»•» 🌺 «•«━┑\n<weather>\n┕━»•» 🌺 «•«━━━━━┙", "═✿══╡°˖✧✿✧˖°╞══✿═\nCPU: <cpu> <cpu_temp>\nGPU: <gpu> <gpu_temp>\nRAM: <ramgb>\n═✿══╡°˖✧✿✧˖°╞══✿═"],
     "tokens": {},
+    "vrchat": {
+        "auth_cookie": "",
+        "two_factor_cookie": "",
+    },
 }
 
 def load_config():

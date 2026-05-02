@@ -8,6 +8,7 @@ from config import load_config
 from services.text_processor import TextProcessor, init_fields
 from services.tokens import ALL_TOKENS
 from services.platform_info import SYSTEM, IS_WINE
+from services import vrchat_service
 import resources_rc
 
 VERSION = "0.0.0+dev"
@@ -29,6 +30,7 @@ def create_app():
     config = load_config()
     logger.info("OSC target %s:%s", config["osc"]["ip"], config["osc"]["port"])
     osc_client = OSCClient(config["osc"]["ip"], config["osc"]["port"])
+    vrchat_service.bootstrap_from_config(config)
 
     token_configs = config.get("tokens", {})
     text_processor = TextProcessor()
