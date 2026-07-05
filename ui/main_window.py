@@ -202,6 +202,11 @@ class MainWindow(QMainWindow):
         self.copy.setToolTip("Duplicate selected chat")
         self.copy.clicked.connect(self.click_copy)
         button_row.addWidget(self.copy)
+        self.settings = QPushButton("⚙")
+        self.settings.setStyleSheet(btn_style)
+        self.settings.setToolTip("Settings")
+        self.settings.clicked.connect(self.click_settings)
+        button_row.addWidget(self.settings)
         list_layout.addLayout(button_row)
 
         cycle_row = QHBoxLayout()
@@ -488,6 +493,11 @@ class MainWindow(QMainWindow):
         item.setSelected(True)
         self.edit_text.setFocus()
         self._schedule_save()
+
+    def click_settings(self):
+        from ui.settings_dialog import SettingsDialog
+        dlg = SettingsDialog(self.config, self)
+        dlg.exec()
 
     def click_copy(self):
         current = self.list.currentItem()
