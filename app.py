@@ -76,6 +76,9 @@ def create_app():
 
     token_configs = config.get("tokens", {})
     text_processor = TextProcessor()
+    text_processor.preserve_blank_lines = bool(
+        config.get("settings", {}).get("preserve_blank_lines", False)
+    )
     for token_cls in ALL_TOKENS:
         token = token_cls()
         init_fields(token, token_configs.get(token.tag))

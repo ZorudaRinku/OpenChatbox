@@ -503,11 +503,22 @@ class MainWindow(QMainWindow):
             self.list.addItem(item)
             self.validate_item(item)
 
+    def revalidate_all(self):
+        """Re-resolve every chat item and the editor preview."""
+        for i in range(self.list.count()):
+            self.validate_item(self.list.item(i))
+        self.validate_text(self.edit_text.toPlainText())
+
     def apply_restored_config(self, new_config):
         """Apply a restored config to the running app."""
         # Mutate in place: the dict is shared with services and dialogs
         self.config.clear()
         self.config.update(new_config)
+
+        if self.text_processor:
+            self.text_processor.preserve_blank_lines = bool(
+                self.config.get("settings", {}).get("preserve_blank_lines", False)
+            )
 
         osc = self.config.get("osc", {})
         self._send_worker.osc_client = OSCClient(

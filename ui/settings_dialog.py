@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QDialog, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import QCheckBox, QDialog, QPushButton, QVBoxLayout
 from config import (
     CONFIG_PATH,
     ConfigError,
@@ -23,12 +23,30 @@ class SettingsDialog(QDialog):
         self.resize(360, 280)
 
         self.layout = QVBoxLayout(self)
+
+        self.preserve_blank_lines_cb = QCheckBox("Preserve Blank Lines")
+        self.preserve_blank_lines_cb.setToolTip(
+            "Keep blank lines in messages instead of removing them before sending"
+        )
+        self.preserve_blank_lines_cb.setChecked(
+            bool(config.get("settings", {}).get("preserve_blank_lines", False))
+        )
+        self.preserve_blank_lines_cb.toggled.connect(self.toggle_preserve_blank_lines)
+        self.layout.addWidget(self.preserve_blank_lines_cb)
+
         self.layout.addStretch()
 
         self.restore_btn = QPushButton("Restore Config Backup...")
         self.restore_btn.setToolTip("Restore the config from an earlier backup")
         self.restore_btn.clicked.connect(self.click_restore)
         self.layout.addWidget(self.restore_btn)
+
+    def toggle_preserve_blank_lines(self, checked):
+        self.config.setdefault("settings", {})["preserve_blank_lines"] = bool(checked)
+        save_config(self.config)
+        if self.main_window is not None and self.main_window.text_processor:
+            self.main_window.text_processor.preserve_blank_lines = bool(checked)
+            self.main_window.revalidate_all()
 
     def click_restore(self):
         from ui.restore_dialog import RestoreBackupDialog

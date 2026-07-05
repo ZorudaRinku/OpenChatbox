@@ -39,6 +39,7 @@ BLANKLINE_SENTINEL = "\x00BLANKLINE\x00"
 class TextProcessor:
     def __init__(self):
         self.tokens: dict[str, Token] = {}
+        self.preserve_blank_lines = False
 
     def register(self, token: Token):
         self.tokens[token.tag] = token
@@ -54,8 +55,9 @@ class TextProcessor:
                     logger.exception("Token <%s> failed to resolve", tag)
                     text = text.replace(placeholder, "")
         # Remove completely blank lines, then restore <blankline> sentinels
-        lines = text.split("\n")
-        lines = [line for line in lines if line.strip() or BLANKLINE_SENTINEL in line]
-        text = "\n".join(lines)
+        if not self.preserve_blank_lines:
+            lines = text.split("\n")
+            lines = [line for line in lines if line.strip() or BLANKLINE_SENTINEL in line]
+            text = "\n".join(lines)
         text = text.replace(BLANKLINE_SENTINEL, "")
         return text
