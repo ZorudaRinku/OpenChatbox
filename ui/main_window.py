@@ -209,35 +209,10 @@ class MainWindow(QMainWindow):
         button_row.addWidget(self.settings)
         list_layout.addLayout(button_row)
 
-        cycle_row = QHBoxLayout()
-        cycle_row.setSpacing(4)
-        self.cycle_spin = QSpinBox()
-        self.cycle_spin.setRange(0, 999)
-        self.cycle_spin.setPrefix("Cycle: ")
-        self.cycle_spin.setSuffix("s")
-        self.cycle_spin.setSpecialValueText("Cycle: off")
-        self.cycle_spin.setToolTip("Seconds between cycling to the next chat")
         cycle_val = config.get("osc", {}).get("cycle_interval", 4)
-        if cycle_val == 1:
-            cycle_val = 2
-        self.cycle_spin.setValue(cycle_val)
-        self._prev_cycle = cycle_val
-        self.cycle_spin.valueChanged.connect(self._on_cycle_changed)
-        cycle_row.addWidget(self.cycle_spin)
-        self.update_spin = QSpinBox()
-        self.update_spin.setRange(0, 999)
-        self.update_spin.setPrefix("Update: ")
-        self.update_spin.setSuffix("s")
-        self.update_spin.setSpecialValueText("Update: off")
-        self.update_spin.setToolTip("Seconds between re-sending the current chat")
+        self.cycle_interval = 2 if cycle_val == 1 else cycle_val
         update_val = config.get("osc", {}).get("update_interval", 2)
-        if update_val == 1:
-            update_val = 2
-        self.update_spin.setValue(update_val)
-        self._prev_update = update_val
-        self.update_spin.valueChanged.connect(self._on_update_changed)
-        cycle_row.addWidget(self.update_spin)
-        list_layout.addLayout(cycle_row)
+        self.update_interval = 2 if update_val == 1 else update_val
 
         content_layout.addLayout(list_layout)
 
@@ -381,8 +356,6 @@ class MainWindow(QMainWindow):
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._on_timer)
 
-        self._sync_update_suffix()
-
         self._save_timer = QTimer()
         self._save_timer.setSingleShot(True)
         self._save_timer.setInterval(500)
@@ -395,12 +368,10 @@ class MainWindow(QMainWindow):
 
         sent = self.send_current()
         now = int(time.monotonic() * 1000)
-        cycle_val = self.cycle_spin.value()
-        update_val = self.update_spin.value()
-        if cycle_val > 0:
-            self._next_cycle_at = now + cycle_val * 1000
-        if update_val > 0:
-            self._next_update_at = now + update_val * 1000
+        if self.cycle_interval > 0:
+            self._next_cycle_at = now + self.cycle_interval * 1000
+        if self.update_interval > 0:
+            self._next_update_at = now + self.update_interval * 1000
         if not sent:
             self._schedule_next()
 
@@ -537,18 +508,14 @@ class MainWindow(QMainWindow):
         if self.list.count() > 0:
             self.list.setCurrentRow(0)
 
-        for spin, prev_attr, key, default in (
-            (self.cycle_spin, "_prev_cycle", "cycle_interval", 4),
-            (self.update_spin, "_prev_update", "update_interval", 2),
-        ):
-            value = osc.get(key, default)
-            if value == 1:
-                value = 2
-            spin.blockSignals(True)
-            spin.setValue(value)
-            spin.blockSignals(False)
-            setattr(self, prev_attr, value)
-        self._sync_update_suffix()
+        cycle_val = osc.get("cycle_interval", 4)
+        self.cycle_interval = 2 if cycle_val == 1 else cycle_val
+        update_val = osc.get("update_interval", 2)
+        self.update_interval = 2 if update_val == 1 else update_val
+        now = int(time.monotonic() * 1000)
+        self._next_cycle_at = now + self.cycle_interval * 1000 if self.cycle_interval > 0 else 0
+        self._next_update_at = now + self.update_interval * 1000 if self.update_interval > 0 else 0
+        self._schedule_next()
         logger.info("Applied restored config with %d chats", self.list.count())
 
     def click_copy(self):
@@ -1002,12 +969,12 @@ class MainWindow(QMainWindow):
         min_at = self._last_send_ms + 2000
 
         best = None
-        cycle_val = self.cycle_spin.value()
+        cycle_val = self.cycle_interval
         if cycle_val > 0 and self._next_cycle_at > 0:
             at = max(self._next_cycle_at, min_at)
             best = ('cycle', at)
 
-        update_val = self.update_spin.value()
+        update_val = self.update_interval
         if update_val > 0 and self._next_update_at > 0:
             if not (cycle_val > 0 and update_val >= cycle_val):
                 at = max(self._next_update_at, min_at)
@@ -1030,15 +997,15 @@ class MainWindow(QMainWindow):
                 self.current_index = (self.current_index + 1) % count
                 if self.list.item(self.current_index).data(Qt.ItemDataRole.UserRole):
                     sent = self.send_current()
-                    self._next_cycle_at = now + self.cycle_spin.value() * 1000
-                    if self.update_spin.value() > 0:
-                        self._next_update_at = now + self.update_spin.value() * 1000
+                    self._next_cycle_at = now + self.cycle_interval * 1000
+                    if self.update_interval > 0:
+                        self._next_update_at = now + self.update_interval * 1000
                     if not sent:
                         self._schedule_next()
                     return
         else:
             sent = self.send_current()
-            self._next_update_at = now + self.update_spin.value() * 1000
+            self._next_update_at = now + self.update_interval * 1000
             if not sent:
                 self._schedule_next()
 
@@ -1047,37 +1014,13 @@ class MainWindow(QMainWindow):
         self._next_cycle_at = max(now, self._last_send_ms + 2000)
         self._schedule_next()
 
-    def _on_cycle_changed(self, value):
-        self._on_spin_changed(self.cycle_spin, "_prev_cycle", "cycle_interval", value)
-
-    def _on_update_changed(self, value):
-        self._on_spin_changed(self.update_spin, "_prev_update", "update_interval", value)
-
-    def _on_spin_changed(self, spin, prev_attr, config_key, value):
-        prev = getattr(self, prev_attr)
-        if value == 1:
-            spin.setValue(2 if prev == 0 else 0)
-            return
-        setattr(self, prev_attr, value)
-        self._update_interval(config_key, value)
-
-    def _update_interval(self, config_key, value):
+    def set_interval(self, config_key, value):
+        """Apply a cycle/update interval change from the settings dialog."""
         now = int(time.monotonic() * 1000)
         if config_key == "cycle_interval":
+            self.cycle_interval = value
             self._next_cycle_at = now + value * 1000 if value > 0 else 0
         else:
+            self.update_interval = value
             self._next_update_at = now + value * 1000 if value > 0 else 0
         self._schedule_next()
-        self._sync_update_suffix()
-        if "osc" not in self.config:
-            self.config["osc"] = {}
-        self.config["osc"][config_key] = value
-        self._schedule_save()
-
-    def _sync_update_suffix(self):
-        cycle_val = self.cycle_spin.value()
-        update_val = self.update_spin.value()
-        if update_val > 0 and cycle_val > 0 and update_val >= cycle_val:
-            self.update_spin.setSuffix("s (Disabled)")
-        else:
-            self.update_spin.setSuffix("s")

@@ -42,7 +42,9 @@ MAX_BACKUPS = 10
 DEFAULTS = {
     "osc": {
         "ip": "127.0.0.1",
-        "port": 9000
+        "port": 9000,
+        "cycle_interval": 4,
+        "update_interval": 2,
     },
     "chats": ["╔════ஓ๑♡๑ஓ════╗\n<nowplaying>\n<song_progress>\n<song_progress_bar>\n╚════ஓ๑♡๑ஓ════╝", "┍━━━━━»•» 🌺 «•«━┑\n<weather>\n┕━»•» 🌺 «•«━━━━━┙", "═✿══╡°˖✧✿✧˖°╞══✿═\nCPU: <cpu> <cpu_temp>\nGPU: <gpu> <gpu_temp>\nRAM: <ramgb>\n═✿══╡°˖✧✿✧˖°╞══✿═"],
     "tokens": {},

@@ -57,6 +57,41 @@ class SettingsDialog(QDialog):
         target_layout.addLayout(target_row)
         self.layout.addWidget(target_box)
 
+        timing_box = QWidget()
+        timing_layout = QVBoxLayout(timing_box)
+        timing_layout.setContentsMargins(0, 0, 0, 0)
+        timing_layout.addWidget(QLabel("Chat Timings"))
+        timing_row = QHBoxLayout()
+        self.cycle_spin = QSpinBox()
+        self.cycle_spin.setRange(0, 999)
+        self.cycle_spin.setPrefix("Cycle: ")
+        self.cycle_spin.setSuffix("s")
+        self.cycle_spin.setSpecialValueText("Cycle: off")
+        self.cycle_spin.setToolTip("Seconds between cycling to the next chat")
+        cycle_val = int(osc.get("cycle_interval", 4))
+        if cycle_val == 1:
+            cycle_val = 2
+        self.cycle_spin.setValue(cycle_val)
+        self._prev_cycle = cycle_val
+        self.cycle_spin.valueChanged.connect(self._on_cycle_changed)
+        timing_row.addWidget(self.cycle_spin, 1)
+        self.update_spin = QSpinBox()
+        self.update_spin.setRange(0, 999)
+        self.update_spin.setPrefix("Update: ")
+        self.update_spin.setSuffix("s")
+        self.update_spin.setSpecialValueText("Update: off")
+        self.update_spin.setToolTip("Seconds between re-sending the current chat")
+        update_val = int(osc.get("update_interval", 2))
+        if update_val == 1:
+            update_val = 2
+        self.update_spin.setValue(update_val)
+        self._prev_update = update_val
+        self.update_spin.valueChanged.connect(self._on_update_changed)
+        timing_row.addWidget(self.update_spin, 1)
+        timing_layout.addLayout(timing_row)
+        self.layout.addWidget(timing_box)
+        self._sync_update_suffix()
+
         self.preserve_blank_lines_cb = QCheckBox("Preserve Blank Lines")
         self.preserve_blank_lines_cb.setToolTip(
             "Keep blank lines in messages instead of removing them before sending"
@@ -89,6 +124,32 @@ class SettingsDialog(QDialog):
         save_config(self.config)
         if self.main_window is not None:
             self.main_window.set_osc_target(ip, port)
+
+    def _on_cycle_changed(self, value):
+        self._on_interval_changed(self.cycle_spin, "_prev_cycle", "cycle_interval", value)
+
+    def _on_update_changed(self, value):
+        self._on_interval_changed(self.update_spin, "_prev_update", "update_interval", value)
+
+    def _on_interval_changed(self, spin, prev_attr, config_key, value):
+        # 1s is too fast: stepping up from off jumps to 2, stepping down turns off
+        if value == 1:
+            spin.setValue(2 if getattr(self, prev_attr) == 0 else 0)
+            return
+        setattr(self, prev_attr, value)
+        self.config.setdefault("osc", {})[config_key] = value
+        save_config(self.config)
+        self._sync_update_suffix()
+        if self.main_window is not None:
+            self.main_window.set_interval(config_key, value)
+
+    def _sync_update_suffix(self):
+        cycle_val = self.cycle_spin.value()
+        update_val = self.update_spin.value()
+        if update_val > 0 and cycle_val > 0 and update_val >= cycle_val:
+            self.update_spin.setSuffix("s (Disabled)")
+        else:
+            self.update_spin.setSuffix("s")
 
     def toggle_preserve_blank_lines(self, checked):
         self.config.setdefault("settings", {})["preserve_blank_lines"] = bool(checked)
@@ -141,3 +202,22 @@ class SettingsDialog(QDialog):
         self.port_spin.blockSignals(True)
         self.port_spin.setValue(int(osc.get("port", 9000)))
         self.port_spin.blockSignals(False)
+
+        for spin, prev_attr, key, default in (
+            (self.cycle_spin, "_prev_cycle", "cycle_interval", 4),
+            (self.update_spin, "_prev_update", "update_interval", 2),
+        ):
+            value = int(osc.get(key, default))
+            if value == 1:
+                value = 2
+            spin.blockSignals(True)
+            spin.setValue(value)
+            spin.blockSignals(False)
+            setattr(self, prev_attr, value)
+        self._sync_update_suffix()
+
+        self.preserve_blank_lines_cb.blockSignals(True)
+        self.preserve_blank_lines_cb.setChecked(
+            bool(self.config.get("settings", {}).get("preserve_blank_lines", False))
+        )
+        self.preserve_blank_lines_cb.blockSignals(False)
