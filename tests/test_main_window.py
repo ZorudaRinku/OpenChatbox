@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLineEdit, QSpinBox
+from PySide6.QtWidgets import QCheckBox, QLineEdit, QSpinBox
 from services.text_processor import FieldDef, init_fields
 from ui.main_window import MainWindow
 
@@ -22,6 +22,15 @@ class SpinFieldToken:
 
     def resolve(self) -> str:
         return self.fields["n"]
+
+
+class CheckboxFieldToken:
+    tag = "checktok"
+    field_defs = [FieldDef("enabled", "Enabled", "false", field_type="checkbox")]
+    fields: dict[str, str]
+
+    def resolve(self) -> str:
+        return "on" if self.fields["enabled"] == "true" else "off"
 
 
 class GroupedFieldToken:
@@ -62,7 +71,8 @@ def window(qtbot, mock_osc_client, sample_config, text_processor):
 
 @pytest.fixture
 def rich_window(qtbot, mock_osc_client, sample_config, text_processor):
-    for token in (TextFieldToken(), SpinFieldToken(), GroupedFieldToken()):
+    for token in (TextFieldToken(), SpinFieldToken(), CheckboxFieldToken(),
+                  GroupedFieldToken()):
         init_fields(token)
         text_processor.register(token)
     win = MainWindow(mock_osc_client, sample_config, text_processor=text_processor)
@@ -224,6 +234,23 @@ class TestMainWindow:
         item = _find_token_item(rich_window.right_list, "spintok")
         rich_window._show_token_fields(item)
         assert any(isinstance(w, QSpinBox) for w in rich_window._field_widgets)
+
+    def test_click_token_shows_checkbox(self, rich_window):
+        item = _find_token_item(rich_window.right_list, "checktok")
+        rich_window._show_token_fields(item)
+        checkboxes = [w for w in rich_window._field_widgets if isinstance(w, QCheckBox)]
+        assert checkboxes
+        assert not checkboxes[0].isChecked()
+
+    def test_checkbox_toggle_updates_field(self, rich_window):
+        item = _find_token_item(rich_window.right_list, "checktok")
+        rich_window._show_token_fields(item)
+        checkbox = next(
+            w for w in rich_window._field_widgets if isinstance(w, QCheckBox)
+        )
+        checkbox.setChecked(True)
+        token = rich_window.text_processor.tokens["checktok"]
+        assert token.fields["enabled"] == "true"
 
     def test_click_token_shows_grouped_fields(self, rich_window):
         item = _find_token_item(rich_window.right_list, "grouptok")

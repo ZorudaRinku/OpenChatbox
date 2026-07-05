@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 from ui.char_width import count_visual_lines
 from PySide6.QtCore import Qt, QTimer, QThread, QObject, QEvent, Signal, Slot
 from PySide6.QtGui import QBrush, QColor, QDesktopServices, QPalette, QTextOption
-from PySide6.QtWidgets import QMainWindow, QWidget, QLabel, QVBoxLayout, QAbstractItemView, QStyledItemDelegate, QTextEdit, QPushButton, QListWidget, QListWidgetItem, QHBoxLayout, QLineEdit, QComboBox, QScrollArea, QToolButton, QSpinBox, QTreeWidget, QTreeWidgetItem
+from PySide6.QtWidgets import QMainWindow, QWidget, QLabel, QVBoxLayout, QAbstractItemView, QStyledItemDelegate, QTextEdit, QPushButton, QListWidget, QListWidgetItem, QHBoxLayout, QLineEdit, QCheckBox, QComboBox, QScrollArea, QToolButton, QSpinBox, QTreeWidget, QTreeWidgetItem
 
 
 TOKEN_GROUPS = [
@@ -649,6 +649,17 @@ class MainWindow(QMainWindow):
             )
             return sb
 
+        if field_def.field_type == "checkbox":
+            cb = QCheckBox(field_def.label)
+            cb.setChecked(str(value).lower() == "true")
+            cb.toggled.connect(
+                lambda checked, t=tag, k=key: (
+                    self._on_field_edited(t, k, "true" if checked else "false"),
+                    self._show_token_fields(self.right_list.currentItem()),
+                )
+            )
+            return cb
+
         if field_def.field_type == "dropdown" and field_def.options:
             combo = QComboBox()
             combo.addItems(field_def.options)
@@ -736,10 +747,12 @@ class MainWindow(QMainWindow):
             # -- Single field (existing logic) --
             i += 1
 
-            label = QLabel(field_def.label)
-            self.fields_layout.insertWidget(insert_pos, label)
-            self._field_widgets.append(label)
-            insert_pos += 1
+            # A checkbox shows its label as its own text, so skip the label row
+            if field_def.field_type != "checkbox":
+                label = QLabel(field_def.label)
+                self.fields_layout.insertWidget(insert_pos, label)
+                self._field_widgets.append(label)
+                insert_pos += 1
 
             if field_def.field_type == "ble_scan":
                 row_widget = QWidget()
