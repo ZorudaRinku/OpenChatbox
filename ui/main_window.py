@@ -2,7 +2,7 @@ import sys
 import time
 import logging
 from services.osc import OSCClient
-from config import save_config
+from config import save_config, backup_config
 
 logger = logging.getLogger(__name__)
 from ui.char_width import count_visual_lines
@@ -388,13 +388,7 @@ class MainWindow(QMainWindow):
         self._save_timer.setInterval(500)
         self._save_timer.timeout.connect(self.save_chats)
 
-        disabled_chats = self.config.get("disabled_chats", [])
-        for i, text in enumerate(self.config.get("chats", [])):
-            item = QListWidgetItem(text)
-            enabled = not (i < len(disabled_chats) and disabled_chats[i])
-            item.setData(Qt.ItemDataRole.UserRole, enabled)
-            self.list.addItem(item)
-            self.validate_item(item)
+        self._populate_chat_list()
 
         if self.list.count() > 0:
             QTimer.singleShot(0, lambda: self.list.setCurrentRow(0))
@@ -465,6 +459,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self._save_timer.stop()
         self.save_chats()
+        backup_config()
         self._send_thread.quit()
         self._resolve_thread.quit()
         self._update_thread.quit()
@@ -498,6 +493,47 @@ class MainWindow(QMainWindow):
         from ui.settings_dialog import SettingsDialog
         dlg = SettingsDialog(self.config, self)
         dlg.exec()
+
+    def _populate_chat_list(self):
+        disabled_chats = self.config.get("disabled_chats", [])
+        for i, text in enumerate(self.config.get("chats", [])):
+            item = QListWidgetItem(text)
+            enabled = not (i < len(disabled_chats) and disabled_chats[i])
+            item.setData(Qt.ItemDataRole.UserRole, enabled)
+            self.list.addItem(item)
+            self.validate_item(item)
+
+    def apply_restored_config(self, new_config):
+        """Apply a restored config to the running app."""
+        # Mutate in place: the dict is shared with services and dialogs
+        self.config.clear()
+        self.config.update(new_config)
+
+        osc = self.config.get("osc", {})
+        self._send_worker.osc_client = OSCClient(
+            osc.get("ip", "127.0.0.1"), osc.get("port", 9000)
+        )
+
+        self.list.blockSignals(True)
+        self.list.clear()
+        self._populate_chat_list()
+        self.list.blockSignals(False)
+        if self.list.count() > 0:
+            self.list.setCurrentRow(0)
+
+        for spin, prev_attr, key, default in (
+            (self.cycle_spin, "_prev_cycle", "cycle_interval", 4),
+            (self.update_spin, "_prev_update", "update_interval", 2),
+        ):
+            value = osc.get(key, default)
+            if value == 1:
+                value = 2
+            spin.blockSignals(True)
+            spin.setValue(value)
+            spin.blockSignals(False)
+            setattr(self, prev_attr, value)
+        self._sync_update_suffix()
+        logger.info("Applied restored config with %d chats", self.list.count())
 
     def click_copy(self):
         current = self.list.currentItem()
