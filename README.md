@@ -1,6 +1,6 @@
 # OpenChatbox
 
-Cross-platform desktop app for sending OSC chatbox messages to VRChat. Write multiple messages, use tokens for live data (heartbeat, now playing, weather, etc.), and the app cycles through them automatically.
+Cross-platform desktop app for sending OSC chatbox messages to VRChat (PC / Quest). Write multiple messages, use tokens for live data (heartbeat, now playing, weather, etc.), and the app cycles through them automatically.
 
 Built with Python and PySide6. Works on Linux and Windows.
 

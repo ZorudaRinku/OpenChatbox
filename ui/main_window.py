@@ -509,6 +509,13 @@ class MainWindow(QMainWindow):
             self.validate_item(self.list.item(i))
         self.validate_text(self.edit_text.toPlainText())
 
+    def set_osc_target(self, ip, port):
+        """Point OSC sends at a new address and port."""
+        client = OSCClient(ip, port)
+        self.osc_client = client
+        self._send_worker.osc_client = client
+        logger.info("OSC target %s:%s", ip, port)
+
     def apply_restored_config(self, new_config):
         """Apply a restored config to the running app."""
         # Mutate in place: the dict is shared with services and dialogs
@@ -521,9 +528,7 @@ class MainWindow(QMainWindow):
             )
 
         osc = self.config.get("osc", {})
-        self._send_worker.osc_client = OSCClient(
-            osc.get("ip", "127.0.0.1"), osc.get("port", 9000)
-        )
+        self.set_osc_target(osc.get("ip", "127.0.0.1"), osc.get("port", 9000))
 
         self.list.blockSignals(True)
         self.list.clear()
