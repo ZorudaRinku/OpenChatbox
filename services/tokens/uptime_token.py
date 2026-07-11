@@ -1,4 +1,3 @@
-import time
 from services.text_processor import FieldDef
 from services.platform_info import IS_WINDOWS
 

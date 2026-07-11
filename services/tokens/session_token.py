@@ -1,5 +1,4 @@
 import time
-from services.text_processor import FieldDef
 
 
 class SessionToken:
