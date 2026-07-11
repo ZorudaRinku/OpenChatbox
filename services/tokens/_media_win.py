@@ -35,6 +35,15 @@ def _run_async(coro):
         loop.close()
 
 
+def _status_str(playback_status) -> str:
+    """Map the playback_status enum to a string; 4 = Playing, 5 = Paused."""
+    if playback_status == 4:
+        return "playing"
+    if playback_status == 5:
+        return "paused"
+    return str(playback_status)
+
+
 async def _get_media_info() -> dict[str, str] | None:
     from winrt.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as SessionManager
     manager = await SessionManager.request_async()
@@ -44,12 +53,10 @@ async def _get_media_info() -> dict[str, str] | None:
         return None
     info = await session.try_get_media_properties_async()
     status = session.get_playback_info().playback_status
-    # playback_status is an enum; 4 = Playing, 5 = Paused
-    status_str = "playing" if status == 4 else "paused" if status == 5 else str(status)
     return {
         "artist": info.artist or "",
         "title": info.title or "",
-        "status": status_str,
+        "status": _status_str(status),
     }
 
 
@@ -70,7 +77,7 @@ def _timespan_to_seconds(ts) -> float:
     return getattr(ts, "duration", 0) / 1e7
 
 
-async def _get_media_timeline() -> dict[str, float] | None:
+async def _get_media_timeline() -> dict | None:
     import datetime
     from winrt.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as SessionManager
     manager = await SessionManager.request_async()
@@ -82,10 +89,10 @@ async def _get_media_timeline() -> dict[str, float] | None:
     duration = _timespan_to_seconds(timeline.end_time)
     if duration <= 0:
         return None
+    info = session.get_playback_info()
     # Browsers only update the timeline on play/pause/seek, so the
     # reported position goes stale while playing. Extrapolate forward
     # using last_updated_time (UTC datetime) and playback_rate.
-    info = session.get_playback_info()
     rate = info.playback_rate if info.playback_rate is not None else 0.0
     if rate > 0:
         last_updated = timeline.last_updated_time
@@ -100,10 +107,14 @@ async def _get_media_timeline() -> dict[str, float] | None:
                 )).total_seconds()
             if elapsed > 0:
                 position = min(position + elapsed * rate, duration)
-    return {"position": position, "duration": duration}
+    return {
+        "position": position,
+        "duration": duration,
+        "status": _status_str(info.playback_status),
+    }
 
 
-def _query_media_timeline() -> dict[str, float] | None:
+def _query_media_timeline() -> dict | None:
     if not _check_winrt():
         return None
     try:

@@ -12,6 +12,7 @@ class NowPlayingToken:
         FieldDef("paused_prefix", "Paused Prefix", "⏸️"),
         FieldDef("fallback", "Fallback", ""),
         FieldDef("max_length", "Max Length (0 = off)", "0", field_type="spinbox"),
+        FieldDef("blank_on_paused", "Blank on paused media", "false", field_type="checkbox"),
     ]
     hint = "<a href=https://github.com/altdesktop/playerctl/issues/359>Using Linux & Browser media?</a>"
 
@@ -36,7 +37,12 @@ class NowPlayingToken:
                 status = lines[0].lower()
                 text = lines[1] if len(lines) > 1 else ""
                 if text:
-                    prefix = self.fields["paused_prefix"] if status == "paused" else self.fields["playing_prefix"]
+                    if status == "paused":
+                        if self.fields["blank_on_paused"] == "true":
+                            return ""
+                        prefix = self.fields["paused_prefix"]
+                    else:
+                        prefix = self.fields["playing_prefix"]
                     return self._truncate(f"{prefix} {text}")
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
@@ -50,6 +56,8 @@ class NowPlayingToken:
             text = text.replace("{{artist}}", info["artist"] or "Unknown")
             text = text.replace("{{title}}", info["title"] or "Unknown")
             if info["status"] == "paused":
+                if self.fields["blank_on_paused"] == "true":
+                    return ""
                 prefix = self.fields["paused_prefix"]
             else:
                 prefix = self.fields["playing_prefix"]
